@@ -13,7 +13,7 @@ TEAL = (0, 128, 128)
 CYAN = (0, 200, 200)
 
 BLOCK_SIZE = 20
-CLOCK_SPEED = 40
+CLOCK_SPEED = 10
 
 Point = namedtuple("Point", ['x', 'y'])
 
@@ -27,7 +27,7 @@ class Direction(Enum):
 
 class SnakeGame:
 
-    def __init__(self, w=640, h=480):
+    def __init__(self, w=1280, h=960):
         self.w = w
         self.h = h
 
@@ -70,12 +70,64 @@ class SnakeGame:
         self.display.blit(text, [0, 0])
         pygame.display.flip()
 
+    def _move(self, direction):
+        x = self.head.x
+        y = self.head.y
+
+        if direction == Direction.RIGHT:
+            x += BLOCK_SIZE
+        elif direction == Direction.LEFT:
+            x -= BLOCK_SIZE
+        elif direction == Direction.DOWN:
+            y += BLOCK_SIZE
+        elif direction == Direction.UP:
+            y -= BLOCK_SIZE
+
+        self.head = Point(x, y)
+
+    def _is_collision(self):
+
+        if self.head.x > self.w - BLOCK_SIZE or self.head.x < 0 or self.head.y > self.h - BLOCK_SIZE or self.head.y < 0:
+            return True
+
+        if self.head in self.snake[1:]:
+            return True
+
+        return False
+
     def play_step(self):
+        game_over = False
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT and self.direction != Direction.RIGHT:
+                    self.direction = Direction.LEFT
+                elif event.key == pygame.K_RIGHT and self.direction != Direction.LEFT:
+                    self.direction = Direction.RIGHT
+                elif event.key == pygame.K_UP and self.direction != Direction.DOWN:
+                    self.direction = Direction.UP
+                elif event.key == pygame.K_DOWN and self.direction != Direction.UP:
+                    self.direction = Direction.DOWN
+
+        if self._is_collision():
+            game_over = True
+            return self.score, game_over
+
+        if self.head == self.food:
+            self.score += 1
+            self._place_food()
+        else:
+            self.snake.pop()
+
+        self._move(self.direction)
+        self.snake.insert(0, self.head)
 
         self._update_ui()
         self.clock.tick(CLOCK_SPEED)
 
-        game_over = False
         return self.score, game_over
 
 
