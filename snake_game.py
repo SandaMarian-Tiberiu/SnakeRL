@@ -34,10 +34,13 @@ class SnakeGame:
         self.display = pygame.display.set_mode((self.w, self.h))
         self.clock = pygame.time.Clock()
 
+        pygame.display.set_caption("Snake")
+        self.reset()
+        self.frame_iteration = 0
+
+    def reset(self):
         self.score = 0
         self.food = Point(0, 0)
-
-        pygame.display.set_caption("Snake")
 
         self.direction = Direction.RIGHT
 
