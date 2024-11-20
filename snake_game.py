@@ -1,5 +1,6 @@
 import pygame
 import random
+import numpy as np
 from enum import Enum
 from collections import namedtuple
 
@@ -73,74 +74,80 @@ class SnakeGame:
         self.display.blit(text, [0, 0])
         pygame.display.flip()
 
-    def _move(self, direction):
+    def _move(self, action):
         x = self.head.x
         y = self.head.y
 
-        if direction == Direction.RIGHT:
+        clock_wise = [Direction.RIGHT, Direction.DOWN, Direction.LEFT, Direction.UP]
+        indx = clock_wise.index(self.direction)
+
+        if np.array_equal(action, [1, 0, 0]):
+            self.direction = clock_wise[indx]
+        elif np.array_equal(action, [0, 1, 0]):
+            self.direction = clock_wise[(indx + 1) % 4]
+        else:
+            self.direction = clock_wise[(indx - 1) % 4]
+
+        if self.direction == Direction.RIGHT:
             x += BLOCK_SIZE
-        elif direction == Direction.LEFT:
+        elif self.direction == Direction.LEFT:
             x -= BLOCK_SIZE
-        elif direction == Direction.DOWN:
+        elif self.direction == Direction.DOWN:
             y += BLOCK_SIZE
-        elif direction == Direction.UP:
+        elif self.direction == Direction.UP:
             y -= BLOCK_SIZE
 
         self.head = Point(x, y)
 
-    def _is_collision(self):
+    def is_collision(self, pt=None):
 
-        if self.head.x > self.w - BLOCK_SIZE or self.head.x < 0 or self.head.y > self.h - BLOCK_SIZE or self.head.y < 0:
+        if pt is None:
+            pt = self.head
+
+        if pt.x > self.w - BLOCK_SIZE or pt.x < 0 or pt.y > self.h - BLOCK_SIZE or pt.y < 0:
             return True
 
-        if self.head in self.snake[1:]:
+        if pt in self.snake[1:]:
             return True
 
         return False
 
-    def play_step(self):
+    def play_step(self, action):
         game_over = False
+        reward = 0
+
+        self.frame_iteration += 1
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT and self.direction != Direction.RIGHT:
-                    self.direction = Direction.LEFT
-                elif event.key == pygame.K_RIGHT and self.direction != Direction.LEFT:
-                    self.direction = Direction.RIGHT
-                elif event.key == pygame.K_UP and self.direction != Direction.DOWN:
-                    self.direction = Direction.UP
-                elif event.key == pygame.K_DOWN and self.direction != Direction.UP:
-                    self.direction = Direction.DOWN
+            # if event.type == pygame.KEYDOWN:
+            #     if event.key == pygame.K_LEFT and self.direction != Direction.RIGHT:
+            #         self.direction = Direction.LEFT
+            #     elif event.key == pygame.K_RIGHT and self.direction != Direction.LEFT:
+            #         self.direction = Direction.RIGHT
+            #     elif event.key == pygame.K_UP and self.direction != Direction.DOWN:
+            #         self.direction = Direction.UP
+            #     elif event.key == pygame.K_DOWN and self.direction != Direction.UP:
+            #         self.direction = Direction.DOWN
 
-        if self._is_collision():
+        if self.is_collision() or self.frame_iteration > 200 * len(self.snake):
             game_over = True
-            return self.score, game_over
+            reward = -10
+            return self.score, game_over, reward
 
         if self.head == self.food:
             self.score += 1
+            reward = 10
             self._place_food()
         else:
             self.snake.pop()
 
-        self._move(self.direction)
+        self._move(action)
         self.snake.insert(0, self.head)
 
         self._update_ui()
         self.clock.tick(CLOCK_SPEED)
 
-        return self.score, game_over
-
-
-if __name__ == "__main__":
-    game = SnakeGame()
-
-    while True:
-        score, game_over = game.play_step()
-
-        if game_over:
-            break
-
-    pygame.quit()
+        return self.score, game_over, reward
